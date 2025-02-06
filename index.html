@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 200px;
+  background: #f1f5f9;
+  padding: 20px;
+  border-right: 1px solid #e2e8f0;
+}
+
+.canvas {
+  flex: 1;
+  position: relative;
+  background: #fff;
+  overflow: auto;
+}
+
+.draggable {
+  cursor: move;
+  margin: 10px 0;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.canvas .draggable {
+  position: absolute;
+  margin: 0;
+  min-width: 100px;
+}
+
+.canvas .draggable.button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.button-group {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #2563eb;
+}
+
+.file-input {
+  display: none;
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 5px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: none;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 5px 15px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: #f1f5f9;
+}
+
+.draggable:hover {
+  outline: 2px solid #3b82f6;
+}
+
+/* Zoom */
+.canvas {
+  transform-origin: top left;
+  transition: transform 0.2s ease-in-out;
+}
+
+#sidebar {
+  width: 250px;
+  user-select: none;
+  transition: transform 0.2s ease-in-out;
+}
+
+
+    </style>
+</head>
+<body>
+        <!-- Toolbar -->
+        <div class="bg-stone-300 flex justify-center gap-x-4 p-2" id="toolbar">
+          <button id="undo">Undo</button>
+          <button id="redo">Redo</button>
+          <button id="zoomIn">ZoomIn</button>
+          <button id="zoomOut">ZoomOut</button>
+          <button id="toggleSidebar">Sidebar</button>
+        </div>
+    
+        <!-- Main Content -->
+        <div class="container">
+          <div class="sidebar">
+            <h2>Components</h2>
+            <div class="draggable" draggable="true" data-type="text">Text Block</div>
+            <div class="draggable" draggable="true" data-type="button">Button</div>
+            <div class="draggable bg-green-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="card">Card</div>
+          </div>
+          <div class="canvas">
+            <div id="canvas"></div>
+          </div>
+        </div>
+    
+        <!-- Movable Sidebar Modal -->
+        <div id="sidebarModal" class="hidden fixed top-10 right-5 bg-white shadow-lg w-64 p-4 rounded-md cursor-move z-50">
+          <!-- Drag Handle -->
+          <div id="drag-handle" class="cursor-move flex justify-between items-center bg-gray-100 px-3 py-2 rounded-md">
+            <span class="font-semibold">Navigator</span>
+            <button id="closeSidebar" class="text-gray-500 hover:text-red-500">✖</button>
+          </div>
+          <!-- Sidebar Content -->
+          <h2 class="mt-4 font-bold">Components</h2>
+          <div class="draggable bg-gray-200 p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="text">Text Block</div>
+          <div class="draggable bg-blue-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="button">Button</div>
+          <div class="draggable bg-green-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="card">Card</div>
+        </div>
+    
+        <!-- Load & Save Buttons -->
+        <div class="button-group">
+          <input type="file" id="loadFile" class="file-input" accept=".html">
+          <button class="action-btn" onclick="document.getElementById('loadFile').click()">Load HTML</button>
+          <button class="action-btn" onclick="exportHTML()">Save HTML</button>
+        </div>
+    
+        <!-- Context Menu -->
+        <div class="context-menu" id="contextMenu">
+          <button onclick="editElement()">Edit Text</button>
+          <button onclick="deleteElement()">Delete</button>
+        </div>
+     
+
+<script>
+let draggedElement = null;
+let offsetX = 0;
+let offsetY = 0;
+let elementCounter = 0;
+let selectedElement = null;
+
+// Save states for Undo/Redo
+let historyStack = [];
+let redoStack = [];
+
+function saveState() {
+  const canvas = document.querySelector(".canvas");
+  historyStack.push(canvas.innerHTML);
+  redoStack = []; // Clear redo history when a new change is made
+}
+
+function undo() {
+  if (historyStack.length > 0) {
+    const canvas = document.querySelector(".canvas");
+    redoStack.push(canvas.innerHTML);
+    canvas.innerHTML = historyStack.pop();
+    reattachDragListeners();
+  }
+}
+
+function redo() {
+  if (redoStack.length > 0) {
+    const canvas = document.querySelector(".canvas");
+    historyStack.push(canvas.innerHTML);
+    canvas.innerHTML = redoStack.pop();
+    reattachDragListeners();
+  }
+}
+
+// Function to reattach drag listeners after undo/redo
+function reattachDragListeners() {
+  document.querySelectorAll(".canvas .draggable").forEach((element) => {
+    element.draggable = true;
+    element.addEventListener("dragstart", (e) => {
+      draggedElement = e.target;
+      const rect = draggedElement.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+    });
+  });
+}
+
+// Assign Undo/Redo Buttons
+document.getElementById("undo").addEventListener("click", undo);
+document.getElementById("redo").addEventListener("click", redo);
+
+// Handle Drag Start
+document.addEventListener("dragstart", (e) => {
+  if (e.target.classList.contains("draggable")) {
+    draggedElement = e.target;
+    const rect = draggedElement.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+  }
+});
+
+// Handle Drag Over
+document.querySelector(".canvas").addEventListener("dragover", (e) => {
+  e.preventDefault();
+});
+
+// Handle Drop
+document.querySelector(".canvas").addEventListener("drop", (e) => {
+  e.preventDefault();
+  const canvas = document.querySelector(".canvas");
+  const canvasRect = canvas.getBoundingClientRect();
+
+  // Check if dragged element is from sidebar
+  if (draggedElement.parentElement.classList.contains("sidebar") || draggedElement.parentElement.id === "sidebarModal") {
+    const type = draggedElement.dataset.type;
+    const newElement = document.createElement("div");
+    elementCounter++;
+
+    if (type === "button") {
+      newElement.className = "draggable button bg-blue-500 text-white px-4 py-2 rounded-md cursor-move";
+      newElement.innerHTML = "Button " + elementCounter;
+    } else if (type === "text") {
+      newElement.className = "draggable p-2 bg-gray-200 rounded-md cursor-move";
+      newElement.innerHTML = "Text Block " + elementCounter;
+    } else if (type === "card") {
+      newElement.className = "draggable card relative cursor-move p-4 bg-white border border-gray-300 rounded-lg shadow-md";
+      newElement.innerHTML = `
+        <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow-sm relative p-5">
+          <a href="#">
+            <img class="rounded-t-lg w-full" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIALcAwwMBIgACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABAUBAwYCB//EADEQAQACAQIDBwIDCQAAAAAAAAABAgMEESExUQUSIjJBYXEjUhMUwRUzYoGRoaKx0f/EABcBAQEBAQAAAAAAAAAAAAAAAAABAgP/xAAWEQEBAQAAAAAAAAAAAAAAAAAAARH/2gAMAwEAAhEDEQA/APoIDo5gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9232z/QGAAAAAAAAAAAAAAAAAAAAASdHpLam2/lxxzt/wABqw4cme/dx13n/SywdmY67Tmnvz0jhCZixUw0imOu1Ye2dakeaY6Y42x0rX4jZ73YEV4yYseSPqUrb5hEzdmYr7zimaT05wnAKDUaXNp/PXw/dHGGl0s8Y2nkr9X2bW299P4bfZ6T8NSs2KoZtE0tNbRMTHOJFRgAAABmtbXtFaxMzPpEMLzQaeuHBWdvHaN7T+iWrIq/yOp23/Bnb5homJrMxaJiY5xLpEPtPT1yYZyxHjpG+/WDVxTAKyAAA94cVs2WuOnOf7A26PTW1OTblSPNK8pSuOkUpG1Y5Q84MVcGKMdOUevV7ZtakAEUAAAAAA2iecQwyA5oBtgAAdDp7xkwUvXlNXPJGk1l9NO0R3qTzrKWLKvWjXXimkyzPrXux/NG/auPb91ffpwQdVqsmptE34VjlWPRJFtaAGmQABd9n6b8vi3tH1Lc/b2Q+y9N37/jXjw1nw+8rZm1qQARQAAAAAAAAAFVbsrJHky1n5jZFzaXPh43xzt1jjC/F1Mc0LvUaDDm3msdy/WsfoqtRpsunttkrw9LRyldTGkBUAAAAG3TYbZ80Y6+vOekNS80Gm/L4vFH1Lcbe3slqyJFKVx0ilI2rEbQyDLQAAAAAAAAAAAAAAxatb1mt4iazziWQFRrOz7Yt74d7U9Y9YQXSq/XaCL75MEbW9a9fhZUsVQTG07TwkaZAS9Bo51Fu/eNsUf5ewN3Zel70xnyRwjyR191oREREREbRHKBhuAAAAAAAAAAAAAAAAAAAAIur0VNR4qz3MnXr8oE9m6iJ2iKz7xZci6mK7T9mRExbPaLfw15LGIiIiIiIiOUQCKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//Z" alt="Placeholder Image" />
+          </a>
+          <div class="p-5">
+            <a href="#">
+              <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900">Noteworthy technology acquisitions 2021</h5>
+            </a>
+            <p class="mb-3 font-normal text-gray-700">Here are the biggest enterprise technology acquisitions of 2021 so far.</p>
+            <div class="card-content relative w-full h-auto min-h-[50px]"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    newElement.draggable = true;
+    newElement.dataset.type = type;
+    canvas.appendChild(newElement);
+    draggedElement = newElement;
+    saveState();
+  }
+
+  // Position the element
+  const x = e.clientX - canvasRect.left - offsetX;
+  const y = e.clientY - canvasRect.top - offsetY;
+  draggedElement.style.position = "absolute";
+  draggedElement.style.left = x + "px";
+  draggedElement.style.top = y + "px";
+});
+
+// Handle Drag Over Inside Card
+document.addEventListener("dragover", (e) => {
+  if (e.target.classList.contains("card-content")) {
+    e.preventDefault();
+  }
+});
+
+// Handle Drop Inside Card
+document.addEventListener("drop", (e) => {
+  if (e.target.classList.contains("card-content")) {
+    e.preventDefault();
+    const cardContent = e.target;
+    
+    if (draggedElement.dataset.type === "button") {
+      const newButton = document.createElement("div");
+      newButton.className = "draggable button bg-blue-500 text-white px-4 py-2 rounded-md cursor-move";
+      newButton.innerHTML = "Button " + elementCounter;
+      newButton.draggable = true;
+      newButton.dataset.type = "button";
+
+      cardContent.appendChild(newButton);
+      draggedElement = newButton;
+
+      saveState();
+    }
+  }
+});
+
+// Prevent Button from Leaving Card
+document.addEventListener("dragend", (e) => {
+  if (e.target.dataset.type === "button" && e.target.parentElement.classList.contains("card-content")) {
+    const cardRect = e.target.parentElement.getBoundingClientRect();
+    const buttonRect = e.target.getBoundingClientRect();
+
+    if (buttonRect.left < cardRect.left || buttonRect.right > cardRect.right || buttonRect.top < cardRect.top || buttonRect.bottom > cardRect.bottom) {
+      e.target.style.left = "0px";
+      e.target.style.top = "0px";
+    }
+  }
+});
+
+// Context menu handling
+document.addEventListener("contextmenu", (e) => {
+  if (e.target.classList.contains("draggable") && e.target.parentElement.classList.contains("canvas")) {
+    e.preventDefault();
+    selectedElement = e.target;
+    const menu = document.getElementById("contextMenu");
+    menu.style.display = "block";
+    menu.style.left = e.pageX + "px";
+    menu.style.top = e.pageY + "px";
+    saveState();
+  }
+});
+
+document.addEventListener("click", () => {
+  document.getElementById("contextMenu").style.display = "none";
+});
+
+function editElement() {
+  if (selectedElement) {
+    const newText = prompt("Enter new text:", selectedElement.innerText);
+    if (newText) {
+      selectedElement.innerText = newText;
+    }
+  }
+}
+
+function deleteElement() {
+  if (selectedElement) {
+    selectedElement.remove();
+    saveState();
+  }
+}
+
+// Load HTML file
+document.getElementById('loadFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      // Create a temporary container to parse the HTML
+      const temp = document.createElement('div');
+      temp.innerHTML = e.target.result;
+      // Clear current canvas
+      const canvas = document.querySelector('.canvas');
+      canvas.innerHTML = '';
+      // Find all components in the loaded HTML
+      const components = temp.querySelectorAll('.component');
+      components.forEach(comp => {
+        const newElement = document.createElement('div');
+        newElement.className = `draggable${comp.classList.contains('button') ? ' button' : ''}`;
+        newElement.draggable = true;
+        newElement.innerHTML = comp.innerHTML;
+        newElement.dataset.type = comp.classList.contains('button') ? 'button' : 'text';
+        // Extract and apply position
+        const style = comp.getAttribute('style');
+        const leftMatch = style.match(/left: ([^;]+);/);
+        const topMatch = style.match(/top: ([^;]+);/);
+        if (leftMatch && topMatch) {
+          newElement.style.left = leftMatch[1];
+          newElement.style.top = topMatch[1];
+        }
+        canvas.appendChild(newElement);
+      });
+    };
+    reader.readAsText(file);
+  }
+});
+// Export function
+function exportHTML() {
+  const canvas = document.querySelector('.canvas');
+  const components = canvas.getElementsByClassName('draggable');
+  let exportedHTML = `
+          <!DOCTYPE html>
+          <html>
+              <head>
+                  <style>
+.component { position: absolute; }
+.button {
+background: #3b82f6;
+color: white;
+border: none;
+padding: 8px 16px;
+border-radius: 4px;
+}
+</style>
+              </head>
+              <body>`;
+  Array.from(components).forEach(comp => {
+    const style = `left: ${comp.style.left}; top: ${comp.style.top};`;
+    const className = `component ${comp.dataset.type === 'button' ? 'button' : ''}`;
+    exportedHTML += `\n  
+                  <div class="${className}" style="${style}">${comp.innerHTML}</div>`;
+  });
+  exportedHTML += '\n < /body>\n < /html>';
+  // Create and download the file
+  const blob = new Blob([exportedHTML], {
+    type: 'text/html'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'website.html';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const sidebarModal = document.getElementById("sidebarModal");
+    const toggleSidebarBtn = document.getElementById("toggleSidebar");
+    const closeSidebarBtn = document.getElementById("closeSidebar");
+    const dragHandle = document.getElementById("drag-handle");
+
+    let offsetX = 0, offsetY = 0, isDragging = false;
+
+    // Toggle Sidebar Modal
+    toggleSidebarBtn.addEventListener("click", () => {
+        sidebarModal.classList.toggle("hidden");
+    });
+
+    // Close Sidebar
+    closeSidebarBtn.addEventListener("click", () => {
+        sidebarModal.classList.add("hidden");
+    });
+
+    // Drag Functionality
+    dragHandle.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        offsetX = e.clientX - sidebarModal.offsetLeft;
+        offsetY = e.clientY - sidebarModal.offsetTop;
+        document.addEventListener("mousemove", moveSidebar);
+        document.addEventListener("mouseup", stopDrag);
+    });
+
+    function moveSidebar(e) {
+        if (isDragging) {
+            sidebarModal.style.left = `${e.clientX - offsetX}px`;
+            sidebarModal.style.top = `${e.clientY - offsetY}px`;
+        }
+    }
+
+    function stopDrag() {
+        isDragging = false;
+        document.removeEventListener("mousemove", moveSidebar);
+        document.removeEventListener("mouseup", stopDrag);
+    }
+});
+
+
+</script>
+
+</body>
+</html>

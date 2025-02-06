@@ -1,0 +1,118 @@
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 200px;
+  background: #f1f5f9;
+  padding: 20px;
+  border-right: 1px solid #e2e8f0;
+}
+
+.canvas {
+  flex: 1;
+  position: relative;
+  background: #fff;
+  overflow: auto;
+}
+
+.draggable {
+  cursor: move;
+  margin: 10px 0;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.canvas .draggable {
+  position: absolute;
+  margin: 0;
+  min-width: 100px;
+}
+
+.canvas .draggable.button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.button-group {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #2563eb;
+}
+
+.file-input {
+  display: none;
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 5px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: none;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 5px 15px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: #f1f5f9;
+}
+
+.draggable:hover {
+  outline: 2px solid #3b82f6;
+}
+
+/* Zoom */
+.canvas {
+  transform-origin: top left;
+  transition: transform 0.2s ease-in-out;
+}
+
+#sidebar {
+  width: 250px;
+  user-select: none;
+  transition: transform 0.2s ease-in-out;
+}
+

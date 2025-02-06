@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {},
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body class="">
+    <!-- Toolbar -->
+    <div class="bg-stone-300 flex justify-center gap-x-4 p-2" id="toolbar">
+      <button id="undo">Undo</button>
+      <button id="redo">Redo</button>
+      <button id="zoomIn">ZoomIn</button>
+      <button id="zoomOut">ZoomOut</button>
+      <button id="toggleSidebar">Sidebar</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+      <div class="sidebar">
+        <h2>Components</h2>
+        <div class="draggable" draggable="true" data-type="text">Text Block</div>
+        <div class="draggable" draggable="true" data-type="button">Button</div>
+        <div class="draggable bg-green-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="card">Card</div>
+      </div>
+      <div class="canvas">
+        <div id="canvas"></div>
+      </div>
+    </div>
+
+    <!-- Movable Sidebar Modal -->
+    <div id="sidebarModal" class="hidden fixed top-10 right-5 bg-white shadow-lg w-64 p-4 rounded-md cursor-move z-50">
+      <!-- Drag Handle -->
+      <div id="drag-handle" class="cursor-move flex justify-between items-center bg-gray-100 px-3 py-2 rounded-md">
+        <span class="font-semibold">Navigator</span>
+        <button id="closeSidebar" class="text-gray-500 hover:text-red-500">✖</button>
+      </div>
+      <!-- Sidebar Content -->
+      <h2 class="mt-4 font-bold">Components</h2>
+      <div class="draggable bg-gray-200 p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="text">Text Block</div>
+      <div class="draggable bg-blue-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="button">Button</div>
+      <div class="draggable bg-green-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="card">Card</div>
+    </div>
+
+    <!-- Load & Save Buttons -->
+    <div class="button-group">
+      <input type="file" id="loadFile" class="file-input" accept=".html">
+      <button class="action-btn" onclick="document.getElementById('loadFile').click()">Load HTML</button>
+      <button class="action-btn" onclick="exportHTML()">Save HTML</button>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+      <button onclick="editElement()">Edit Text</button>
+      <button onclick="deleteElement()">Delete</button>
+    </div>
+
+    <script src="sidebar.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

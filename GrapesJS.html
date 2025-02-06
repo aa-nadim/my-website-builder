@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Page Builder</title>
+    <link rel="stylesheet" href="https://unpkg.com/grapesjs/dist/css/grapes.min.css">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        .gjs-editor { height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="gjs"></div>
+    <script src="https://unpkg.com/grapesjs"></script>
+    <script src="https://unpkg.com/grapesjs-preset-webpage"></script>
+    <script src="https://unpkg.com/grapesjs-plugin-forms"></script>
+    <script src="https://unpkg.com/grapesjs-blocks-basic"></script>
+    <script>
+        const editor = grapesjs.init({
+    container: '#gjs', // Container element
+    height: '100%',
+    width: 'auto',
+    storageManager: false, // Disable default storage
+    plugins: ['grapesjs-preset-webpage', 'grapesjs-plugin-forms', 'grapesjs-blocks-basic'],
+    pluginsOpts: {
+        'grapesjs-preset-webpage': {
+            blocks: ['column1', 'column2', 'column3', 'text', 'link', 'image', 'video'],
+            flexGrid: true,
+        },
+        'grapesjs-plugin-forms': {},
+        'grapesjs-blocks-basic': {},
+    },
+});
+// Add a basic save button
+editor.Panels.addButton('options', {
+    id: 'save',
+    className: 'fa fa-floppy-o',
+    command: 'save',
+    attributes: { title: 'Save' },
+});
+editor.Commands.add('save', {
+    run: function (editor, sender) {
+        sender && sender.set('active', false);
+        const html = editor.getHtml();
+        const css = editor.getCss();
+        console.log('HTML:', html);
+        console.log('CSS:', css);
+        alert('Check the console for the generated HTML and CSS!');
+    },
+});
+    </script>
+</body>
+</html>

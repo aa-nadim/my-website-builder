@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .resize-handle {
+            width: 10px;
+            height: 10px;
+            background-color: #fff;
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            cursor: se-resize;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border-radius: 2px;
+        }
+
+        .tile:hover .resize-handle {
+            opacity: 1;
+        }
+
+        .tile {
+            position: absolute;
+            min-width: 100px;
+            min-height: 80px;
+            touch-action: none;
+            user-select: none;
+            transition: transform 0.3s ease, left 0.3s ease, top 0.3s ease;
+        }
+
+        .fixed-tile {
+            background-color: #6366F1;
+        }
+
+        .regular-tile {
+            background-color: #10B981;
+        }
+
+        .non-resizable-tile {
+            background-color: #F59E0B;
+        }
+
+        #dashboard {
+            background-color: #FEF9C3;
+            min-height: 600px;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="flex flex-wrap gap-4 mb-4">
+        <button id="removeBtn" class="bg-red-300 p-4 rounded flex items-center justify-center hover:bg-red-400 transition-colors">
+            <span class="ml-2">Drop here to remove!</span>
+        </button>
+        
+        <button id="addResizableBtn" class="bg-emerald-500 p-4 rounded flex items-center justify-center text-white hover:bg-emerald-600 transition-colors" draggable="true">
+            <span class="ml-2">Add New Resize-drag-dropable Tile</span>
+        </button>
+        
+        <button id="addFixedBtn" class="bg-indigo-500 p-4 rounded flex items-center justify-center text-white hover:bg-indigo-600 transition-colors" draggable="true">
+            <span class="ml-2">Add New Fixed resizable tile</span>
+        </button>
+        
+        <button id="addNonResizableBtn" class="bg-amber-500 p-4 rounded flex items-center justify-center text-white hover:bg-amber-600 transition-colors" draggable="true">
+            <span class="ml-2">Add New not Resizable tile</span>
+        </button>
+    </div>
+
+    <div id="dashboard" class="rounded-lg"></div>
+
+    <script>
+        class Dashboard {
+            constructor() {
+                this.dashboard = document.getElementById('dashboard');
+                this.removeBtn = document.getElementById('removeBtn');
+                this.currentId = 1;
+                this.tiles = new Set();
+                this.setupButtons();
+                this.setupDashboardDropZone();
+            }
+
+            setupButtons() {
+                this.removeBtn.addEventListener('dragover', e => e.preventDefault());
+                this.removeBtn.addEventListener('drop', e => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    this.removeTile(id);
+                });
+
+                this.setupDraggableButton('addResizableBtn', {
+                    type: 'regular',
+                    className: 'regular-tile'
+                });
+
+                this.setupDraggableButton('addFixedBtn', {
+                    type: 'fixed',
+                    className: 'fixed-tile',
+                    isFixed: true
+                });
+
+                this.setupDraggableButton('addNonResizableBtn', {
+                    type: 'non-resizable',
+                    className: 'non-resizable-tile',
+                    isResizable: false
+                });
+            }
+
+            setupDraggableButton(buttonId, config) {
+                const button = document.getElementById(buttonId);
+                button.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('application/json', JSON.stringify(config));
+                });
+            }
+
+            checkCollision(rect1, rect2) {
+                return !(rect1.right < rect2.left || 
+                        rect1.left > rect2.right || 
+                        rect1.bottom < rect2.top || 
+                        rect1.top > rect2.bottom);
+            }
+
+            getCollisionRect(x, y, width, height) {
+                return {
+                    left: x,
+                    right: x + width,
+                    top: y,
+                    bottom: y + height
+                };
+            }
+
+            shiftTiles(newTileRect, excludeTileId = null) {
+                const shifts = new Map();
+                let hasCollision;
+
+                do {
+                    hasCollision = false;
+                    for (const tile of this.tiles) {
+                        if (tile.dataset.fixed === 'true' || tile.id === excludeTileId) continue;
+
+                        const tileRect = tile.getBoundingClientRect();
+                        const dashboardRect = this.dashboard.getBoundingClientRect();
+                        const relativeRect = {
+                            left: tileRect.left - dashboardRect.left,
+                            right: tileRect.right - dashboardRect.left,
+                            top: tileRect.top - dashboardRect.top,
+                            bottom: tileRect.bottom - dashboardRect.top
+                        };
+
+                        if (this.checkCollision(newTileRect, relativeRect)) {
+                            hasCollision = true;
+                            const currentShift = shifts.get(tile.id) || { x: 0, y: 0 };
+                            
+                            // Calculate new position
+                            const xShift = newTileRect.right - relativeRect.left + 10;
+                            const yShift = newTileRect.bottom - relativeRect.top + 10;
+
+                            // Choose the smaller shift
+                            if (xShift < yShift) {
+                                currentShift.x += xShift;
+                            } else {
+                                currentShift.y += yShift;
+                            }
+
+                            shifts.set(tile.id, currentShift);
+                        }
+                    }
+                } while (hasCollision);
+
+                // Apply shifts
+                shifts.forEach((shift, tileId) => {
+                    const tile = document.getElementById(tileId);
+                    const currentLeft = parseInt(tile.style.left) || 0;
+                    const currentTop = parseInt(tile.style.top) || 0;
+                    
+                    tile.style.left = `${currentLeft + shift.x}px`;
+                    tile.style.top = `${currentTop + shift.y}px`;
+                });
+
+                return !hasCollision;
+            }
+
+            setupDashboardDropZone() {
+                this.dashboard.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                });
+
+                this.dashboard.addEventListener('drop', e => {
+                    e.preventDefault();
+                    const data = e.dataTransfer.getData('application/json');
+                    if (data) {
+                        const config = JSON.parse(data);
+                        const rect = this.dashboard.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        this.createTile(config, x, y);
+                    }
+                });
+            }
+
+            createTile(config, x, y) {
+                const tile = document.createElement('div');
+                const id = `tile-${this.currentId++}`;
+                
+                tile.className = `tile rounded flex items-center justify-center text-white shadow-lg ${config.className}`;
+                tile.id = id;
+                tile.draggable = !config.isFixed;
+                tile.dataset.fixed = config.isFixed || false;
+                tile.style.width = '192px';
+                tile.style.height = '128px';
+                tile.style.left = `${x}px`;
+                tile.style.top = `${y}px`;
+
+                tile.innerHTML = `
+                    <span class="text-lg">${config.type} tile</span>
+                    ${config.isResizable !== false ? '<div class="resize-handle"></div>' : ''}
+                `;
+
+                const newTileRect = this.getCollisionRect(x, y, 192, 128);
+                this.shiftTiles(newTileRect);
+
+                this.setupTileEvents(tile, config);
+                this.dashboard.appendChild(tile);
+                this.tiles.add(tile);
+            }
+
+            setupTileEvents(tile, config) {
+                if (!config.isFixed) {
+                    this.setupDragEvents(tile);
+                }
+                
+                if (config.isResizable !== false) {
+                    const handle = tile.querySelector('.resize-handle');
+                    if (handle) {
+                        this.setupResizeEvents(tile, handle);
+                    }
+                }
+            }
+
+            setupDragEvents(tile) {
+                let isDragging = false;
+                let startX, startY;
+                let originalX, originalY;
+
+                tile.addEventListener('mousedown', e => {
+                    if (e.target === tile) {
+                        isDragging = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        originalX = parseInt(tile.style.left);
+                        originalY = parseInt(tile.style.top);
+                    }
+                });
+
+                document.addEventListener('mousemove', e => {
+                    if (!isDragging) return;
+
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    const newX = originalX + dx;
+                    const newY = originalY + dy;
+
+                    const newRect = this.getCollisionRect(newX, newY, 
+                        tile.offsetWidth, tile.offsetHeight);
+
+                    if (this.shiftTiles(newRect, tile.id)) {
+                        tile.style.left = `${newX}px`;
+                        tile.style.top = `${newY}px`;
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+
+                tile.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('text/plain', tile.id);
+                });
+            }
+
+            setupResizeEvents(tile, handle) {
+                let isResizing = false;
+                let startX, startY, startWidth, startHeight;
+
+                handle.addEventListener('mousedown', e => {
+                    isResizing = true;
+                    e.stopPropagation();
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = tile.offsetWidth;
+                    startHeight = tile.offsetHeight;
+
+                    document.addEventListener('mousemove', resize);
+                    document.addEventListener('mouseup', stopResize);
+                });
+
+                const resize = (e) => {
+                    if (!isResizing) return;
+
+                    const width = Math.max(100, startWidth + (e.clientX - startX));
+                    const height = Math.max(80, startHeight + (e.clientY - startY));
+                    const left = parseInt(tile.style.left);
+                    const top = parseInt(tile.style.top);
+
+                    const newRect = this.getCollisionRect(left, top, width, height);
+                    
+                    if (this.shiftTiles(newRect, tile.id)) {
+                        tile.style.width = `${width}px`;
+                        tile.style.height = `${height}px`;
+                    }
+                };
+
+                const stopResize = () => {
+                    isResizing = false;
+                    document.removeEventListener('mousemove', resize);
+                    document.removeEventListener('mouseup', stopResize);
+                };
+            }
+
+            removeTile(id) {
+                const tile = document.getElementById(id);
+                if (tile && tile.dataset.fixed !== 'true') {
+                    this.tiles.delete(tile);
+                    tile.remove();
+                }
+            }
+        }
+
+        // Initialize the dashboard
+        const dashboard = new Dashboard();
+    </script>
+</body>
+</html>

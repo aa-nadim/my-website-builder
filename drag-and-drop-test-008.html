@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Grid Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+
+        .dashboard-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .remove-zone {
+            padding: 12px 24px;
+            background: #ff4444;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px dashed #fff;
+            transition: all 0.3s ease;
+        }
+
+        .add-zone {
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            cursor: grab;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 600px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            grid-auto-rows: 100px;
+            gap: 16px;
+            position: relative;
+        }
+
+        .tile {
+            background: #2196F3;
+            border-radius: 4px;
+            color: white;
+            padding: 8px;
+            cursor: grab;
+            position: absolute;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: transform 0.2s ease;
+        }
+
+        .tile.dragging {
+            opacity: 0.8;
+            transform: scale(1.05);
+            z-index: 100;
+        }
+
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: se-resize;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 0 0 4px 0;
+        }
+
+        .resize-handle::after {
+            content: '';
+            position: absolute;
+            right: 4px;
+            bottom: 4px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid white;
+            border-bottom: 2px solid white;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="controls">
+            <div class="remove-zone" id="removeZone">Drop here to remove</div>
+            <div class="add-zone" id="addZone" draggable="true">+ Add new tile</div>
+        </div>
+        <div class="dashboard" id="dashboard"></div>
+    </div>
+
+    <script>
+        class Dashboard {
+            constructor() {
+                this.dashboard = document.getElementById('dashboard');
+                this.removeZone = document.getElementById('removeZone');
+                this.addZone = document.getElementById('addZone');
+                this.tiles = new Map();
+                this.tileCount = 0;
+                this.gridSize = 100;
+                this.gap = 16;
+                this.currentResizing = null;
+
+                this.init();
+            }
+
+            init() {
+                this.setupAddZone();
+                this.setupRemoveZone();
+                this.setupDashboardEvents();
+                this.addInitialTiles();
+                this.updateGridLayout();
+            }
+
+            setupAddZone() {
+                this.addZone.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', 'new-tile');
+                });
+            }
+
+            setupRemoveZone() {
+                this.removeZone.addEventListener('dragover', (e) => e.preventDefault());
+                this.removeZone.addEventListener('drop', (e) => {
+                    const tileId = e.dataTransfer.getData('text/plain');
+                    if (tileId && tileId !== 'new-tile') {
+                        this.removeTile(tileId);
+                    }
+                });
+            }
+
+            setupDashboardEvents() {
+                this.dashboard.addEventListener('dragover', (e) => e.preventDefault());
+                this.dashboard.addEventListener('drop', (e) => {
+                    const tileId = e.dataTransfer.getData('text/plain');
+                    if (tileId === 'new-tile') {
+                        this.addNewTile(e.offsetX, e.offsetY);
+                    } else {
+                        this.handleTileDrop(tileId, e.offsetX, e.offsetY);
+                    }
+                });
+            }
+
+            createTile() {
+                const tile = document.createElement('div');
+                const tileId = `tile-${++this.tileCount}`;
+                
+                tile.className = 'tile';
+                tile.id = tileId;
+                tile.draggable = true;
+                tile.style.width = `${this.gridSize}px`;
+                tile.style.height = `${this.gridSize}px`;
+                
+                tile.innerHTML = `
+                    ${tileId}
+                    <div class="resize-handle"></div>
+                `;
+
+                this.setupTileEvents(tile);
+                return { tile, tileId };
+            }
+
+            setupTileEvents(tile) {
+                tile.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', tile.id);
+                    tile.classList.add('dragging');
+                });
+
+                tile.addEventListener('dragend', () => {
+                    tile.classList.remove('dragging');
+                });
+
+                const resizeHandle = tile.querySelector('.resize-handle');
+                this.setupResizeEvents(tile, resizeHandle);
+            }
+
+            setupResizeEvents(tile, handle) {
+                let startX, startY, startWidth, startHeight;
+
+                handle.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.currentResizing = tile;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = parseInt(tile.style.width);
+                    startHeight = parseInt(tile.style.height);
+
+                    document.addEventListener('mousemove', handleResize);
+                    document.addEventListener('mouseup', stopResize);
+                });
+
+                const handleResize = (e) => {
+                    if (!this.currentResizing) return;
+
+                    const newWidth = Math.max(this.gridSize, startWidth + (e.clientX - startX));
+                    const newHeight = Math.max(this.gridSize, startHeight + (e.clientY - startY));
+
+                    const gridWidth = Math.ceil(newWidth / (this.gridSize + this.gap)) * (this.gridSize + this.gap) - this.gap;
+                    const gridHeight = Math.ceil(newHeight / (this.gridSize + this.gap)) * (this.gridSize + this.gap) - this.gap;
+
+                    tile.style.width = `${gridWidth}px`;
+                    tile.style.height = `${gridHeight}px`;
+
+                    this.updateGridLayout();
+                };
+
+                const stopResize = () => {
+                    this.currentResizing = null;
+                    document.removeEventListener('mousemove', handleResize);
+                    document.removeEventListener('mouseup', stopResize);
+                    this.updateGridLayout();
+                };
+            }
+
+            getGridPosition(x, y) {
+                const gridX = Math.floor(x / (this.gridSize + this.gap));
+                const gridY = Math.floor(y / (this.gridSize + this.gap));
+                return { gridX, gridY };
+            }
+
+            addNewTile(x, y) {
+                const { tile, tileId } = this.createTile();
+                const { gridX, gridY } = this.getGridPosition(x, y);
+                
+                tile.style.left = `${gridX * (this.gridSize + this.gap)}px`;
+                tile.style.top = `${gridY * (this.gridSize + this.gap)}px`;
+                
+                this.dashboard.appendChild(tile);
+                this.tiles.set(tileId, tile);
+                this.updateGridLayout();
+            }
+
+            handleTileDrop(tileId, x, y) {
+                const tile = this.tiles.get(tileId);
+                if (!tile) return;
+
+                const { gridX, gridY } = this.getGridPosition(x, y);
+                tile.style.left = `${gridX * (this.gridSize + this.gap)}px`;
+                tile.style.top = `${gridY * (this.gridSize + this.gap)}px`;
+                
+                this.updateGridLayout();
+            }
+
+            removeTile(tileId) {
+                const tile = this.tiles.get(tileId);
+                if (tile) {
+                    tile.remove();
+                    this.tiles.delete(tileId);
+                    this.updateGridLayout();
+                }
+            }
+
+            updateGridLayout() {
+                const positions = new Set();
+                const tilesArray = Array.from(this.tiles.values());
+
+                tilesArray.forEach(tile => {
+                    const width = parseInt(tile.style.width) || this.gridSize;
+                    const height = parseInt(tile.style.height) || this.gridSize;
+                    let x = parseInt(tile.style.left) || 0;
+                    let y = parseInt(tile.style.top) || 0;
+
+                    while (this.checkCollision(tile, x, y, width, height, positions)) {
+                        y += this.gridSize + this.gap;
+                    }
+
+                    tile.style.left = `${x}px`;
+                    tile.style.top = `${y}px`;
+
+                    const gridWidth = Math.ceil(width / (this.gridSize + this.gap));
+                    const gridHeight = Math.ceil(height / (this.gridSize + this.gap));
+
+                    for (let i = 0; i < gridWidth; i++) {
+                        for (let j = 0; j < gridHeight; j++) {
+                            positions.add(`${x + i * (this.gridSize + this.gap)},${y + j * (this.gridSize + this.gap)}`);
+                        }
+                    }
+                });
+            }
+
+            checkCollision(tile, x, y, width, height, positions) {
+                const gridWidth = Math.ceil(width / (this.gridSize + this.gap));
+                const gridHeight = Math.ceil(height / (this.gridSize + this.gap));
+
+                for (let i = 0; i < gridWidth; i++) {
+                    for (let j = 0; j < gridHeight; j++) {
+                        const pos = `${x + i * (this.gridSize + this.gap)},${y + j * (this.gridSize + this.gap)}`;
+                        if (positions.has(pos)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            addInitialTiles() {
+                for (let i = 0; i < 3; i++) {
+                    this.addNewTile(i * (this.gridSize + this.gap), 0);
+                }
+            }
+        }
+
+        // Initialize the dashboard
+        new Dashboard();
+    </script>
+</body>
+</html>

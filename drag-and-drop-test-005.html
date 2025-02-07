@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resizable Dashboard</title>
+    <!-- Include Tailwind CSS from CDN properly -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .resize-handle {
+            width: 10px;
+            height: 10px;
+            background-color: #666;
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            cursor: se-resize;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border-radius: 2px;
+        }
+
+        .tile:hover .resize-handle {
+            opacity: 1;
+        }
+
+        .tile {
+            position: relative;
+            min-width: 100px;
+            min-height: 80px;
+            touch-action: none;
+            user-select: none;
+            background-color: #10B981; /* Emerald-500 color */
+        }
+
+        .locked {
+            cursor: not-allowed;
+        }
+
+        .locked .resize-handle {
+            display: none;
+        }
+
+        #removeBtn {
+            background-color: #FCA5A5; /* Red-300 color */
+        }
+
+        #addBtn {
+            background-color: #10B981; /* Emerald-500 color */
+        }
+
+        #dashboard {
+            background-color: #FEF9C3; /* Yellow-50 color */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="flex gap-4 mb-4">
+        <button id="removeBtn" class="p-4 rounded flex items-center justify-center text-gray-700 hover:bg-red-400 transition-colors">
+            <span class="ml-2">Drop here to remove!</span>
+        </button>
+        <button id="addBtn" class="p-4 rounded flex items-center justify-center text-white hover:bg-emerald-600 transition-colors">
+            <span class="ml-2">Add New Tile</span>
+        </button>
+    </div>
+
+    <div id="dashboard" class="flex flex-wrap gap-4 p-4 min-h-screen">
+        <!-- Tiles will be added here -->
+    </div>
+
+    <script>
+        class Dashboard {
+            constructor() {
+                this.dashboard = document.getElementById('dashboard');
+                this.addBtn = document.getElementById('addBtn');
+                this.removeBtn = document.getElementById('removeBtn');
+                this.tiles = [];
+                this.currentId = 1;
+
+                this.init();
+            }
+
+            init() {
+                this.addBtn.addEventListener('click', () => this.addTile());
+                this.removeBtn.addEventListener('dragover', (e) => e.preventDefault());
+                this.removeBtn.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    this.removeTile(id);
+                });
+
+                // Add initial tiles
+                this.addInitialTiles();
+            }
+
+            addInitialTiles() {
+                const initialTiles = [
+                    { content: '', width: 384, height: 128 },
+                    { content: 'I can\'t be moved or dragged!', width: 384, height: 256, locked: true },
+                    { content: '4', width: 128, height: 128 },
+                    { content: '5', width: 192, height: 96 },
+                    { content: '6', width: 128, height: 192 }
+                ];
+
+                initialTiles.forEach(tile => this.addTile(tile));
+            }
+
+            createTile(config = {}) {
+                const tile = document.createElement('div');
+                const id = this.currentId++;
+                
+                tile.className = `tile rounded flex items-center justify-center ${config.locked ? 'locked' : 'cursor-move'} text-white shadow-lg`;
+                tile.id = `tile-${id}`;
+                tile.draggable = !config.locked;
+                tile.style.width = `${config.width || 192}px`;
+                tile.style.height = `${config.height || 128}px`;
+                
+                tile.innerHTML = `
+                    <span class="text-lg">${config.content || id}</span>
+                    ${!config.locked ? '<div class="resize-handle"></div>' : ''}
+                `;
+
+                this.setupTileEvents(tile);
+                return tile;
+            }
+
+            setupTileEvents(tile) {
+                if (tile.classList.contains('locked')) return;
+
+                tile.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', tile.id);
+                    setTimeout(() => tile.classList.add('opacity-50'), 0);
+                });
+
+                tile.addEventListener('dragend', () => {
+                    tile.classList.remove('opacity-50');
+                });
+
+                tile.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+
+                tile.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    const draggedTile = document.getElementById(draggedId);
+                    
+                    if (draggedTile && draggedTile !== tile) {
+                        const clone = draggedTile.cloneNode(true);
+                        draggedTile.replaceWith(tile);
+                        tile.replaceWith(clone);
+                        this.setupTileEvents(clone);
+                    }
+                });
+
+                const resizeHandle = tile.querySelector('.resize-handle');
+                if (resizeHandle) {
+                    this.setupResizeEvents(tile, resizeHandle);
+                }
+            }
+
+            setupResizeEvents(tile, handle) {
+                let isResizing = false;
+                let startX, startY, startWidth, startHeight;
+
+                handle.addEventListener('mousedown', (e) => {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = tile.offsetWidth;
+                    startHeight = tile.offsetHeight;
+
+                    document.addEventListener('mousemove', resize);
+                    document.addEventListener('mouseup', stopResize);
+                });
+
+                const resize = (e) => {
+                    if (!isResizing) return;
+
+                    const width = startWidth + (e.clientX - startX);
+                    const height = startHeight + (e.clientY - startY);
+
+                    tile.style.width = `${Math.max(100, width)}px`;
+                    tile.style.height = `${Math.max(80, height)}px`;
+                };
+
+                const stopResize = () => {
+                    isResizing = false;
+                    document.removeEventListener('mousemove', resize);
+                    document.removeEventListener('mouseup', stopResize);
+                };
+            }
+
+            addTile(config = {}) {
+                const tile = this.createTile(config);
+                this.dashboard.appendChild(tile);
+            }
+
+            removeTile(id) {
+                const tile = document.getElementById(id);
+                if (tile && !tile.classList.contains('locked')) {
+                    tile.remove();
+                }
+            }
+        }
+
+        // Initialize the dashboard
+        const dashboard = new Dashboard();
+    </script>
+</body>
+</html>

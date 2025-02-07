@@ -1,3 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {},
+        }
+      };
+    </script>
+  <style>  
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 200px;
+  background: #f1f5f9;
+  padding: 20px;
+  border-right: 1px solid #e2e8f0;
+}
+
+.canvas {
+  flex: 1;
+  position: relative;
+  background: #fff;
+  overflow: auto;
+}
+
+.draggable {
+  cursor: move;
+  margin: 10px 0;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.canvas .draggable {
+  position: absolute;
+  margin: 0;
+  min-width: 100px;
+}
+
+.canvas .draggable.button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.button-group {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #2563eb;
+}
+
+.file-input {
+  display: none;
+}
+
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 5px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: none;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 5px 15px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.context-menu button:hover {
+  background: #f1f5f9;
+}
+
+.draggable:hover {
+  outline: 2px solid #3b82f6;
+}
+
+/* Zoom */
+.canvas {
+  transform-origin: top left;
+  transition: transform 0.2s ease-in-out;
+}
+
+#sidebar {
+  width: 250px;
+  user-select: none;
+  transition: transform 0.2s ease-in-out;
+}
+
+
+  </style>
+  </head>
+  <body class="">
+    <!-- Toolbar -->
+    <div class="bg-stone-300 flex justify-center gap-x-4 p-2" id="toolbar">
+      <button id="undo">Undo</button>
+      <button id="redo">Redo</button>
+      <button id="zoomIn">ZoomIn</button>
+      <button id="zoomOut">ZoomOut</button>
+      <button id="toggleSidebar">Sidebar</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+      <div class="sidebar">
+        <h2>Components</h2>
+        <div class="draggable" draggable="true" data-type="text">Text Block</div>
+        <div class="draggable" draggable="true" data-type="button">Button</div>
+        <div class="draggable bg-green-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="card">Card</div>
+      </div>
+      <div class="canvas">
+        <div id="canvas"></div>
+      </div>
+    </div>
+
+    <!-- Movable Sidebar Modal -->
+    <div id="sidebarModal" class="hidden fixed top-10 right-5 bg-white shadow-lg w-64 p-4 rounded-md cursor-move z-50">
+      <!-- Drag Handle -->
+      <div id="drag-handle" class="cursor-move flex justify-between items-center bg-gray-100 px-3 py-2 rounded-md">
+        <span class="font-semibold">Navigator</span>
+        <button id="closeSidebar" class="text-gray-500 hover:text-red-500">✖</button>
+      </div>
+      <!-- Sidebar Content -->
+      <h2 class="mt-4 font-bold">Components</h2>
+      <div class="draggable bg-gray-200 p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="text">Text Block</div>
+      <div class="draggable bg-blue-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="button">Button</div>
+      <div class="draggable bg-green-500 text-white p-2 mt-2 rounded-md cursor-move" draggable="true" data-type="card">Card</div>
+    </div>
+
+    <!-- Load & Save Buttons -->
+    <div class="button-group">
+      <input type="file" id="loadFile" class="file-input" accept=".html">
+      <button class="action-btn" onclick="document.getElementById('loadFile').click()">Load HTML</button>
+      <button class="action-btn" onclick="exportHTML()">Save HTML</button>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+      <button onclick="editElement()">Edit Text</button>
+      <button onclick="deleteElement()">Delete</button>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+    const sidebarModal = document.getElementById("sidebarModal");
+    const toggleSidebarBtn = document.getElementById("toggleSidebar");
+    const closeSidebarBtn = document.getElementById("closeSidebar");
+    const dragHandle = document.getElementById("drag-handle");
+
+    let offsetX = 0, offsetY = 0, isDragging = false;
+
+    // Toggle Sidebar Modal
+    toggleSidebarBtn.addEventListener("click", () => {
+        sidebarModal.classList.toggle("hidden");
+    });
+
+    // Close Sidebar
+    closeSidebarBtn.addEventListener("click", () => {
+        sidebarModal.classList.add("hidden");
+    });
+
+    // Drag Functionality
+    dragHandle.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        offsetX = e.clientX - sidebarModal.offsetLeft;
+        offsetY = e.clientY - sidebarModal.offsetTop;
+        document.addEventListener("mousemove", moveSidebar);
+        document.addEventListener("mouseup", stopDrag);
+    });
+
+    function moveSidebar(e) {
+        if (isDragging) {
+            sidebarModal.style.left = `${e.clientX - offsetX}px`;
+            sidebarModal.style.top = `${e.clientY - offsetY}px`;
+        }
+    }
+
+    function stopDrag() {
+        isDragging = false;
+        document.removeEventListener("mousemove", moveSidebar);
+        document.removeEventListener("mouseup", stopDrag);
+    }
+});
+
 let draggedElement = null;
 let offsetX = 0;
 let offsetY = 0;
@@ -261,3 +489,7 @@ border-radius: 4px;
   a.click();
   URL.revokeObjectURL(url);
 }
+    </script>
+
+  </body>
+</html>

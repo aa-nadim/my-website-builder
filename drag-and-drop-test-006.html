@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .resize-handle {
+            width: 10px;
+            height: 10px;
+            background-color: #fff;
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            cursor: se-resize;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border-radius: 2px;
+        }
+
+        .tile:hover .resize-handle {
+            opacity: 1;
+        }
+
+        .tile {
+            position: relative;
+            min-width: 100px;
+            min-height: 80px;
+            touch-action: none;
+            user-select: none;
+            background-color: #10B981;
+        }
+
+        .fixed-tile {
+            background-color: #6366F1;
+        }
+
+        .non-resizable-tile {
+            background-color: #F59E0B;
+        }
+
+        .locked {
+            cursor: not-allowed;
+        }
+
+        .locked .resize-handle {
+            display: none;
+        }
+
+        #dashboard {
+            background-color: #FEF9C3;
+            min-height: 600px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="flex flex-wrap gap-4 mb-4">
+        <!-- Remove Button -->
+        <button id="removeBtn" class="bg-red-300 p-4 rounded flex items-center justify-center hover:bg-red-400 transition-colors">
+            <span class="ml-2">Drop here to remove!</span>
+        </button>
+        
+        <!-- Regular Resizable Tile Button -->
+        <button id="addResizableBtn" class="bg-emerald-500 p-4 rounded flex items-center justify-center text-white hover:bg-emerald-600 transition-colors" draggable="true">
+            <span class="ml-2">Add New Resize-drag-dropable Tile</span>
+        </button>
+        
+        <!-- Fixed Resizable Tile Button -->
+        <button id="addFixedBtn" class="bg-indigo-500 p-4 rounded flex items-center justify-center text-white hover:bg-indigo-600 transition-colors" draggable="true">
+            <span class="ml-2">Add New Fixed resizable tile</span>
+        </button>
+        
+        <!-- Non-Resizable Tile Button -->
+        <button id="addNonResizableBtn" class="bg-amber-500 p-4 rounded flex items-center justify-center text-white hover:bg-amber-600 transition-colors" draggable="true">
+            <span class="ml-2">Add New not Resizable tile</span>
+        </button>
+    </div>
+
+    <div id="dashboard" class="flex flex-wrap gap-4 p-4 rounded-lg"></div>
+
+    <script>
+        class Dashboard {
+            constructor() {
+                this.dashboard = document.getElementById('dashboard');
+                this.removeBtn = document.getElementById('removeBtn');
+                this.currentId = 1;
+                this.setupButtons();
+                this.setupDashboardDropZone();
+            }
+
+            setupButtons() {
+                // Remove button setup
+                this.removeBtn.addEventListener('dragover', e => e.preventDefault());
+                this.removeBtn.addEventListener('drop', e => {
+                    e.preventDefault();
+                    const id = e.dataTransfer.getData('text/plain');
+                    this.removeTile(id);
+                });
+
+                // Resizable tile button
+                this.setupDraggableButton('addResizableBtn', {
+                    type: 'resizable',
+                    backgroundColor: '#10B981'
+                });
+
+                // Fixed tile button
+                this.setupDraggableButton('addFixedBtn', {
+                    type: 'fixed',
+                    backgroundColor: '#6366F1',
+                    isFixed: true
+                });
+
+                // Non-resizable tile button
+                this.setupDraggableButton('addNonResizableBtn', {
+                    type: 'non-resizable',
+                    backgroundColor: '#F59E0B',
+                    isResizable: false
+                });
+            }
+
+            setupDraggableButton(buttonId, config) {
+                const button = document.getElementById(buttonId);
+                
+                button.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify(config));
+                });
+            }
+
+            setupDashboardDropZone() {
+                this.dashboard.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                });
+
+                this.dashboard.addEventListener('drop', e => {
+                    e.preventDefault();
+                    const data = e.dataTransfer.getData('application/json');
+                    if (data) {
+                        const config = JSON.parse(data);
+                        const rect = this.dashboard.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        this.createTile(config, x, y);
+                    }
+                });
+            }
+
+            createTile(config, x, y) {
+                const tile = document.createElement('div');
+                const id = `tile-${this.currentId++}`;
+                
+                const baseClasses = 'tile rounded flex items-center justify-center text-white shadow-lg';
+                const typeClasses = config.isFixed ? 'fixed-tile' : 
+                                  !config.isResizable ? 'non-resizable-tile' : '';
+                
+                tile.className = `${baseClasses} ${typeClasses} ${config.isFixed ? 'locked' : 'cursor-move'}`;
+                tile.id = id;
+                tile.draggable = !config.isFixed;
+                tile.style.width = '192px';
+                tile.style.height = '128px';
+                tile.style.position = 'absolute';
+                tile.style.left = `${x}px`;
+                tile.style.top = `${y}px`;
+                tile.style.backgroundColor = config.backgroundColor;
+                
+                tile.innerHTML = `
+                    <span class="text-lg">${config.type} tile</span>
+                    ${config.isResizable !== false ? '<div class="resize-handle"></div>' : ''}
+                `;
+
+                this.setupTileEvents(tile, config);
+                this.dashboard.appendChild(tile);
+            }
+
+            setupTileEvents(tile, config) {
+                if (!config.isFixed) {
+                    this.setupDragEvents(tile);
+                }
+                
+                if (config.isResizable !== false) {
+                    const handle = tile.querySelector('.resize-handle');
+                    if (handle) {
+                        this.setupResizeEvents(tile, handle);
+                    }
+                }
+            }
+
+            setupDragEvents(tile) {
+                let isDragging = false;
+                let currentX;
+                let currentY;
+                let initialX;
+                let initialY;
+                let xOffset = 0;
+                let yOffset = 0;
+
+                tile.addEventListener('mousedown', e => {
+                    initialX = e.clientX - xOffset;
+                    initialY = e.clientY - yOffset;
+                    
+                    if (e.target === tile) {
+                        isDragging = true;
+                    }
+                });
+
+                document.addEventListener('mousemove', e => {
+                    if (isDragging) {
+                        e.preventDefault();
+                        currentX = e.clientX - initialX;
+                        currentY = e.clientY - initialY;
+                        xOffset = currentX;
+                        yOffset = currentY;
+                        
+                        tile.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    initialX = currentX;
+                    initialY = currentY;
+                    isDragging = false;
+                });
+
+                // For remove functionality
+                tile.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('text/plain', tile.id);
+                });
+            }
+
+            setupResizeEvents(tile, handle) {
+                let isResizing = false;
+                let startX, startY, startWidth, startHeight;
+
+                handle.addEventListener('mousedown', e => {
+                    isResizing = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startWidth = tile.offsetWidth;
+                    startHeight = tile.offsetHeight;
+
+                    document.addEventListener('mousemove', resize);
+                    document.addEventListener('mouseup', stopResize);
+                });
+
+                const resize = (e) => {
+                    if (!isResizing) return;
+
+                    const width = startWidth + (e.clientX - startX);
+                    const height = startHeight + (e.clientY - startY);
+
+                    tile.style.width = `${Math.max(100, width)}px`;
+                    tile.style.height = `${Math.max(80, height)}px`;
+                };
+
+                const stopResize = () => {
+                    isResizing = false;
+                    document.removeEventListener('mousemove', resize);
+                    document.removeEventListener('mouseup', stopResize);
+                };
+            }
+
+            removeTile(id) {
+                const tile = document.getElementById(id);
+                if (tile && !tile.classList.contains('locked')) {
+                    tile.remove();
+                }
+            }
+        }
+
+        // Initialize the dashboard
+        const dashboard = new Dashboard();
+    </script>
+</body>
+</html>

@@ -17,6 +17,16 @@
   <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
 
   <style>
+    .grid-stack-item-content {
+      background-color: #007bff; /* Bootstrap Primary Blue */
+      color: white; 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
     .grid-stack-item-removing {
       opacity: 0.8;
       filter: blur(5px);
@@ -89,6 +99,14 @@
         acceptWidgets: true,
         removable: "#trash",
         children
+      });
+
+      // Set content styles
+      grid.engine.nodes.forEach(node => {
+        let item = document.createElement("div");
+        item.className = "grid-stack-item-content";
+        item.innerHTML = node.content;
+        node.el.appendChild(item);
       });
 
       // Enable dragging from sidebar

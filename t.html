@@ -19,7 +19,7 @@
   <style>
     .grid-stack-item-content {
       background-color: #007bff; /* Bootstrap Primary Blue */
-      color: white; 
+      color: white;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -60,7 +60,7 @@
           <ion-icon name="trash-outline"></ion-icon>
           <div>Drop here to remove!</div>
         </div>
-        <div class="grid-stack-item sidepanel-item" data-gs-w="2" data-gs-h="2">
+        <div class="sidepanel-item grid-stack-item" data-gs-w="2" data-gs-h="2">
           <ion-icon name="add-circle-outline"></ion-icon>
           <div>Drag me to the dashboard!</div>
         </div>
@@ -78,6 +78,13 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", function() {
+      // Initialize GridStack
+      const grid = GridStack.init({
+        cellHeight: 70,
+        acceptWidgets: true,
+        removable: "#trash",
+      });
+
       // Initial Grid Items
       const children = [
         { x: 0, y: 0, w: 4, h: 2, content: "1" },
@@ -93,23 +100,15 @@
         { x: 10, y: 4, w: 2, h: 2, content: "11" }
       ];
 
-      // Create GridStack instance
-      const grid = GridStack.init({
-        cellHeight: 70,
-        acceptWidgets: true,
-        removable: "#trash",
-        children
+      // Add items dynamically
+      children.forEach(item => {
+        let el = document.createElement("div");
+        el.classList.add("grid-stack-item");
+        el.innerHTML = `<div class="grid-stack-item-content">${item.content}</div>`;
+        grid.addWidget(el, item);
       });
 
-      // Set content styles
-      grid.engine.nodes.forEach(node => {
-        let item = document.createElement("div");
-        item.className = "grid-stack-item-content";
-        item.innerHTML = node.content;
-        node.el.appendChild(item);
-      });
-
-      // Enable dragging from sidebar
+      // Enable drag from sidebar into grid
       GridStack.setupDragIn(".sidepanel>.grid-stack-item", { appendTo: "body", helper: "clone" });
 
       // Event Listeners

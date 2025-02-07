@@ -456,19 +456,19 @@ function exportHTML() {
   const canvas = document.querySelector('.canvas');
   const components = canvas.getElementsByClassName('draggable');
   let exportedHTML = `
-          <!DOCTYPE html>
-          <html>
+      <!DOCTYPE html>
+        <html>
               <head>
                   <style>
-.component { position: absolute; }
-.button {
-background: #3b82f6;
-color: white;
-border: none;
-padding: 8px 16px;
-border-radius: 4px;
-}
-</style>
+                    .component { position: absolute; }
+                    .button {
+                    background: #3b82f6;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    }
+                  </style>
               </head>
               <body>`;
   Array.from(components).forEach(comp => {
@@ -477,7 +477,7 @@ border-radius: 4px;
     exportedHTML += `\n  
                   <div class="${className}" style="${style}">${comp.innerHTML}</div>`;
   });
-  exportedHTML += '\n < /body>\n < /html>';
+  exportedHTML += '\n </body>\n </html>';
   // Create and download the file
   const blob = new Blob([exportedHTML], {
     type: 'text/html'

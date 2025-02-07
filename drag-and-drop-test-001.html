@@ -440,7 +440,7 @@ border-radius: 4px;
     exportedHTML += `\n  
                   <div class="${className}" style="${style}">${comp.innerHTML}</div>`;
   });
-  exportedHTML += '\n < /body>\n < /html>';
+  exportedHTML += '\n </body>\n </html>';
   // Create and download the file
   const blob = new Blob([exportedHTML], {
     type: 'text/html'

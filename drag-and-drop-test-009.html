@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced GridStack Demo</title>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  
+  <!-- GridStack CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@11.3.0/dist/gridstack.min.css" />
+
+  <!-- Ionicons -->
+  <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+
+  <style>
+    .grid-stack-item-removing {
+      opacity: 0.8;
+      filter: blur(5px);
+    }
+    .sidepanel-item {
+      background-color: #18bc9c;
+      text-align: center;
+      padding: 10px;
+      margin-bottom: 15px;
+      cursor: grab;
+    }
+    #trash {
+      background-color: rgba(255, 0, 0, 0.4);
+      text-align: center;
+      padding: 15px;
+    }
+    ion-icon {
+      font-size: 2rem;
+    }
+  </style>
+</head>
+
+<body>
+  <h1 class="text-center">Advanced GridStack Demo</h1>
+
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <div class="col-md-2 d-none d-md-block">
+        <div id="trash" class="sidepanel-item">
+          <ion-icon name="trash-outline"></ion-icon>
+          <div>Drop here to remove!</div>
+        </div>
+        <div class="grid-stack-item sidepanel-item" data-gs-w="2" data-gs-h="2">
+          <ion-icon name="add-circle-outline"></ion-icon>
+          <div>Drag me to the dashboard!</div>
+        </div>
+      </div>
+
+      <!-- Main Grid -->
+      <div class="col-md-10">
+        <div class="grid-stack"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GridStack JS -->
+  <script src="https://cdn.jsdelivr.net/npm/gridstack@11.3.0/dist/gridstack-all.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // Initial Grid Items
+      const children = [
+        { x: 0, y: 0, w: 4, h: 2, content: "1" },
+        { x: 4, y: 0, w: 4, h: 4, locked: true, content: "I can't be moved or dragged!" },
+        { x: 8, y: 0, w: 2, h: 2, minW: 2, noResize: true, content: "Drag me but don't resize!" },
+        { x: 10, y: 0, w: 2, h: 2, content: "4" },
+        { x: 0, y: 2, w: 2, h: 2, content: "5" },
+        { x: 2, y: 2, w: 2, h: 4, content: "6" },
+        { x: 8, y: 2, w: 4, h: 2, content: "7" },
+        { x: 0, y: 4, w: 2, h: 2, content: "8" },
+        { x: 4, y: 4, w: 4, h: 2, content: "9" },
+        { x: 8, y: 4, w: 2, h: 2, content: "10" },
+        { x: 10, y: 4, w: 2, h: 2, content: "11" }
+      ];
+
+      // Create GridStack instance
+      const grid = GridStack.init({
+        cellHeight: 70,
+        acceptWidgets: true,
+        removable: "#trash",
+        children
+      });
+
+      // Enable dragging from sidebar
+      GridStack.setupDragIn(".sidepanel>.grid-stack-item", { appendTo: "body", helper: "clone" });
+
+      // Event Listeners
+      grid.on("added removed change", function(event, items) {
+        console.log(`${event.type} ${items.length} items:`, items);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+.grid-stack {
+    background-color: cyan !important; /* Set the background color to cyan */
+    padding: 10px;
+    border-radius: 5px;
+  }
+  
+  .grid-stack-item {
+    background-color: #008b8b !important; /* Dark Cyan for the grid items */
+    color: white;
+    text-align: center;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 5px;
+    border: 1px solid #005f5f; /* Dark border for better visibility */
+  }
+  

@@ -6,7 +6,7 @@ import "./Test.css";
 
 const GridStackNestedAdvanced = () => {
   const gridStackRef = useRef(null);
-  const [grid, setGrid] = useState(null); // We will store the grid instance
+  const [grid, setGrid] = useState(null);
   let count = 0;
 
   useEffect(() => {
@@ -15,7 +15,7 @@ const GridStackNestedAdvanced = () => {
         {
           cellHeight: 70,
           acceptWidgets: true,
-          removable: "#trash", // drag-out delete class
+          removable: "#trash",
           resizable: {
             handles: "e, se, s, sw, w", // Resizable on certain sides
           },
@@ -29,8 +29,6 @@ const GridStackNestedAdvanced = () => {
       // Setup for dragging widgets into the grid
       const insert = [{ h: 2, content: "new item" }];
       GridStack.setupDragIn(".sidepanel>.grid-stack-item", undefined, insert);
-
-
 
       // Event listener for grid changes
       gridInstance.on("added removed change", function (e, items) {
@@ -61,7 +59,7 @@ const GridStackNestedAdvanced = () => {
         w: 4,
         h: 4,
         sizeToContent: true,
-        content: "<div>Nested Grid 1</div>",
+        // content: "<div>Nested Grid 1</div>",
         subGridOpts: { children: sub1, id: "sub1_grid", class: "sub1" },
       });
       gridInstance.addWidget({
@@ -74,12 +72,11 @@ const GridStackNestedAdvanced = () => {
     }
   }, []);
 
-  // Function to add a new widget (grid item)
   const addWidget = () => {
     if (grid) {
       const newWidget = document.createElement("div");
       newWidget.className = "grid-stack-item";
-  
+
       // Create the content container
       const contentDiv = document.createElement("div");
       contentDiv.className = "grid-stack-item-content";
@@ -87,32 +84,32 @@ const GridStackNestedAdvanced = () => {
       contentDiv.style.padding = "5px";
       contentDiv.style.textAlign = "center";
       contentDiv.textContent = "New Widget";
-      
+
       // Make content editable
       contentDiv.setAttribute("contenteditable", "true");
-      
+
       // Add event listeners to handle editing
       contentDiv.addEventListener("mousedown", (e) => {
         e.stopPropagation(); // Prevent GridStack from handling the event
       });
-      
+
       contentDiv.addEventListener("click", (e) => {
         e.stopPropagation(); // Prevent GridStack from handling the event
         contentDiv.focus(); // Focus on the content div for editing
       });
-  
+
       // Prevent dragging when editing
       contentDiv.addEventListener("focus", () => {
         grid.disable(); // Temporarily disable grid interactions
       });
-  
+
       contentDiv.addEventListener("blur", () => {
         grid.enable(); // Re-enable grid interactions when done editing
       });
-  
+
       // Append the content div
       newWidget.appendChild(contentDiv);
-  
+
       // Add widget to GridStack
       grid.addWidget(newWidget, {
         x: 0,
@@ -122,12 +119,12 @@ const GridStackNestedAdvanced = () => {
       });
     }
   };
-  
+
   const addImageWidget = () => {
     if (grid) {
       const newWidget = document.createElement("div");
       newWidget.className = "grid-stack-item";
-  
+
       // Create a container for the image
       const imageContainer = document.createElement("div");
       imageContainer.className = "grid-stack-item-content image-container";
@@ -138,27 +135,27 @@ const GridStackNestedAdvanced = () => {
       imageContainer.style.justifyContent = "center";
       imageContainer.style.alignItems = "center";
       imageContainer.style.overflow = "hidden";
-  
+
       // Create image element
       const image = document.createElement("img");
       image.style.maxWidth = "100%";
       image.style.maxHeight = "100%";
       image.style.objectFit = "contain";
       image.alt = "Uploaded Image";
-  
+
       // Create file input
       const fileInput = document.createElement("input");
       fileInput.type = "file";
       fileInput.accept = "image/*";
       fileInput.style.display = "none";
-  
+
       // Create upload button
       const uploadButton = document.createElement("button");
       uploadButton.textContent = "Upload Image";
       uploadButton.addEventListener("click", () => {
         fileInput.click();
       });
-  
+
       // Handle file selection
       fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
@@ -166,18 +163,18 @@ const GridStackNestedAdvanced = () => {
           const reader = new FileReader();
           reader.onload = (event) => {
             image.src = event.target.result;
-            imageContainer.innerHTML = ''; // Clear previous content
+            imageContainer.innerHTML = ""; // Clear previous content
             imageContainer.appendChild(image);
           };
           reader.readAsDataURL(file);
         }
       });
-  
+
       // Append elements
       imageContainer.appendChild(uploadButton);
       imageContainer.appendChild(fileInput);
       newWidget.appendChild(imageContainer);
-  
+
       // Add widget to GridStack
       grid.addWidget(newWidget, {
         x: 0,
@@ -187,12 +184,12 @@ const GridStackNestedAdvanced = () => {
       });
     }
   };
-  
+
   const addInputWidget = () => {
     if (grid) {
       const newWidget = document.createElement("div");
       newWidget.className = "grid-stack-item";
-  
+
       // Create container for input
       const inputContainer = document.createElement("div");
       inputContainer.className = "grid-stack-item-content input-container";
@@ -200,26 +197,26 @@ const GridStackNestedAdvanced = () => {
       inputContainer.style.display = "flex";
       inputContainer.style.flexDirection = "column";
       inputContainer.style.gap = "10px";
-  
+
       // Create label input
       const labelInput = document.createElement("input");
       labelInput.type = "text";
       labelInput.placeholder = "Label";
       labelInput.style.width = "100%";
       labelInput.style.padding = "5px";
-  
+
       // Create input field
       const inputField = document.createElement("input");
       inputField.type = "text";
       inputField.placeholder = "Enter value";
       inputField.style.width = "100%";
       inputField.style.padding = "5px";
-  
+
       // Append inputs to container
       inputContainer.appendChild(labelInput);
       inputContainer.appendChild(inputField);
       newWidget.appendChild(inputContainer);
-  
+
       // Add widget to GridStack
       grid.addWidget(newWidget, {
         x: 0,
@@ -230,12 +227,6 @@ const GridStackNestedAdvanced = () => {
     }
   };
 
-
-  
-
-  
-
-  // Function to add a new nested grid
   const addNestedGrid = () => {
     if (grid) {
       let sub = [
@@ -252,32 +243,32 @@ const GridStackNestedAdvanced = () => {
         y: 0,
         w: 4,
         h: 4,
-        content: "New Nested Grid",
+        // content: "New Nested Grid",
         subGridOpts: { children: sub, id: `sub_grid_${count}`, class: "sub" },
       });
     }
   };
 
-  // Function to save the current grid's HTML structure
   const saveHTML = () => {
     if (grid) {
       const gridContainer = gridStackRef.current;
       const innerContent = gridContainer.innerHTML;
-      const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <title>New Website</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-</head>
-<body>
-  <h2>New Website</h2>
-  <div class="container">${innerContent}</div>
-    <!-- GridStack JS -->
-  <script src="https://cdn.jsdelivr.net/npm/gridstack@11.3.0/dist/gridstack-all.js"></script>
-</body>
-</html>`;
-      
+      const htmlContent = 
+      `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <title>New Website</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+          <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+        </head>
+        <body>
+          <h2>New Website</h2>
+          <div class="container">${innerContent}</div>
+            <!-- GridStack JS -->
+          <script src="https://cdn.jsdelivr.net/npm/gridstack@11.3.0/dist/gridstack-all.js"></script>
+        </body>
+        </html>`;
+
       const blob = new Blob([htmlContent], { type: "text/html" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -307,36 +298,35 @@ const GridStackNestedAdvanced = () => {
     <div className="">
       <div className="row">
         {/* Sidebar */}
-        <div className="col-3 sidepanel">
-
-
-
-
+        <div className="col-lg-2 sidepanel">
           <div className="grid-stack-item sidepanel-item">
             <button onClick={addWidget}>Add Widget</button>
           </div>
-    
-<div className="grid-stack-item sidepanel-item">
-   <button onClick={addImageWidget}>Add Image Widget</button>
- </div>
- <div className="grid-stack-item sidepanel-item">
-   <button onClick={addInputWidget}>Add Input Widget</button>
- </div>
+
+          <div className="grid-stack-item sidepanel-item">
+            <button onClick={addImageWidget}>Add Image Widget</button>
+          </div>
+          <div className="grid-stack-item sidepanel-item">
+            <button onClick={addInputWidget}>Add Input Widget</button>
+          </div>
           <div className="grid-stack-item sidepanel-item">
             <button onClick={addNestedGrid}>Add Nested Grid</button>
           </div>
+
           <div className="grid-stack-item sidepanel-item">
-            <ion-icon name="add-circle"></ion-icon>
             <div>Drag me into the dashboard!</div>
           </div>
-          <div id="trash" className="sidepanel-item">
-            <ion-icon name="trash"></ion-icon>
+
+          <div id="trash" className="sidepanel-item py-5 text-center">
             <div>Drop here to remove!</div>
           </div>
         </div>
 
         {/* Main Grid Area */}
-        <div className="col-9 bg-light d-flex flex-column" style={{ minHeight: "100vh" }}>
+        <div
+          className="col-lg-10 bg-light d-flex flex-column"
+          style={{ minHeight: "100vh" }}
+        >
           <div className="grid-stack flex-grow-1" ref={gridStackRef}></div>
         </div>
       </div>
